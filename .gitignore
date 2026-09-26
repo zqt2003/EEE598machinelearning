@@ -1,0 +1,6 @@
+problem4/DAATSim/
+problem4/data/
+problem4/ckpt/
+problem4/results/
+problem4/DIV2K_valid_HR*
+__pycache__/
