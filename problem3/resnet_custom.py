@@ -7,6 +7,7 @@ import math
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 CONFIGS = {
     "resnet34": (3, 4, 6, 3),
@@ -65,8 +66,41 @@ class BasicBlock(nn.Module):
         return self.relu(out + self.shortcut(x))
 
 
+class KANLinear(nn.Module):
+    """Kolmogorov-Arnold layer (Liu et al., 2024): every input->output connection has its own learnable 1-D
+    function phi_ij(x) = w_base * SiLU(x) + sum_k c_ijk * B_k(x), with cubic B-splines B_k on a fixed grid.
+    output_j = sum_i phi_ij(x_i).  Counts as ONE layer (it replaces the single fc layer)."""
+
+    def __init__(self, in_features, out_features, grid_size=5, spline_order=3, grid_range=(-3.0, 3.0)):
+        super().__init__()
+        self.in_features, self.out_features, self.order = in_features, out_features, spline_order
+        h = (grid_range[1] - grid_range[0]) / grid_size
+        knots = torch.arange(-spline_order, grid_size + spline_order + 1, dtype=torch.float32) * h + grid_range[0]
+        self.register_buffer("grid", knots.expand(in_features, -1).contiguous())      # (in, G + 2k + 1)
+        self.base_weight = nn.Parameter(torch.empty(out_features, in_features))
+        self.spline_weight = nn.Parameter(torch.randn(out_features, in_features, grid_size + spline_order) * 0.01)
+        self.bias = nn.Parameter(torch.zeros(out_features))
+        nn.init.kaiming_uniform_(self.base_weight, a=5 ** 0.5)
+
+    def b_splines(self, x):
+        """Cox-de Boor recursion. x: (B, in) -> (B, in, grid_size + order) basis values."""
+        g, x = self.grid, x.unsqueeze(-1)
+        bases = ((x >= g[:, :-1]) & (x < g[:, 1:])).to(x.dtype)
+        for k in range(1, self.order + 1):
+            bases = ((x - g[:, :-(k + 1)]) / (g[:, k:-1] - g[:, :-(k + 1)]) * bases[..., :-1]
+                     + (g[:, k + 1:] - x) / (g[:, k + 1:] - g[:, 1:-k]) * bases[..., 1:])
+        return bases
+
+    def forward(self, x):
+        with torch.autocast(device_type=x.device.type, enabled=False):   # splines in full precision
+            x = x.float()
+            base = F.linear(F.silu(x), self.base_weight)
+            spline = F.linear(self.b_splines(x).flatten(1), self.spline_weight.flatten(1))
+            return base + spline + self.bias
+
+
 class ResNet(nn.Module):
-    def __init__(self, blocks=(3, 4, 6, 3), widths=(64, 128, 256, 512), num_classes=1000, act="relu"):
+    def __init__(self, blocks=(3, 4, 6, 3), widths=(64, 128, 256, 512), num_classes=1000, act="relu", head="linear"):
         super().__init__()
         self.stem = nn.Sequential(nn.Conv2d(3, 64, 7, 2, 3, bias=False), nn.BatchNorm2d(64),
                                   ACTIVATIONS[act](), nn.MaxPool2d(3, 2, 1))
@@ -78,7 +112,10 @@ class ResNet(nn.Module):
             in_ch = w
         self.stages = nn.Sequential(*stages)
         self.pool = nn.AdaptiveAvgPool2d(1)
-        self.fc = nn.Linear(in_ch, num_classes)
+        if head == "kan":        # LayerNorm puts the features into the spline grid's range [-3, 3]
+            self.fc = nn.Sequential(nn.LayerNorm(in_ch), KANLinear(in_ch, num_classes))
+        else:
+            self.fc = nn.Linear(in_ch, num_classes)
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
                 nn.init.kaiming_normal_(m.weight, mode="fan_out", nonlinearity="relu")
@@ -92,4 +129,4 @@ class ResNet(nn.Module):
 
 def count_layers(model):
     """Main-path weighted layers (convs + fc), excluding 1x1 shortcut convs, as in the ResNet paper."""
-    return sum(isinstance(m, (nn.Conv2d, nn.Linear)) and "shortcut" not in n for n, m in model.named_modules())
+    return sum(isinstance(m, (nn.Conv2d, nn.Linear, KANLinear)) and "shortcut" not in n for n, m in model.named_modules())
