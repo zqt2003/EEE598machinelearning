@@ -5,7 +5,7 @@
 #SBATCH --mem=128G
 #SBATCH -t 0-04:00:00
 #SBATCH -p public
-#SBATCH -q public
+#SBATCH -q class
 #SBATCH -o resnet_compare.%j.out
 #SBATCH -e resnet_compare.%j.err
 #SBATCH --mail-type=ALL

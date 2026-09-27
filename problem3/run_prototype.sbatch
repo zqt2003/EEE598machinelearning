@@ -4,7 +4,7 @@
 #SBATCH --mem=16G
 #SBATCH -t 0-01:00:00
 #SBATCH -p public
-#SBATCH -q public
+#SBATCH -q class
 #SBATCH -o proto_output.%j.out
 #SBATCH -e proto_output.%j.err
 #SBATCH --mail-type=ALL

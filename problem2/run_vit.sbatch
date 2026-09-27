@@ -5,7 +5,7 @@
 #SBATCH --gres=gpu:1                 # one GPU  (use --gres=gpu:a100:1 to require an A100)
 #SBATCH -t 0-02:00:00                # time limit: 2 hours (the job is killed after this)
 #SBATCH -p public
-#SBATCH -q public
+#SBATCH -q class
 #SBATCH -o vit_output.%j.out         # printed output  (%j = job ID)
 #SBATCH -e vit_output.%j.err         # errors
 #SBATCH --mail-type=ALL
