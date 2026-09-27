@@ -25,7 +25,9 @@ for r in args.runs:
         hists[r.name] = pd.read_csv(r / "history.csv")
 
 if rows:
-    t = pd.DataFrame(rows)[["arch", "layers", "params", "gpus", "epochs", "best_epoch", "train_top1", "val_top1",
+    for r in rows:
+        r.setdefault("act", "relu")
+    t = pd.DataFrame(rows)[["arch", "act", "layers", "params", "gpus", "epochs", "best_epoch", "train_top1", "val_top1",
                             "val_top5", "test_top1", "test_top5", "train_time_min", "avg_images_per_s"]]
     t["params"] = (t["params"] / 1e6).round(2).astype(str) + "M"
     print(t.to_string(index=False, float_format=lambda v: f"{v:.4f}"))

@@ -23,12 +23,13 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.utils.data import DataLoader, Dataset, Subset
 from torch.utils.data.distributed import DistributedSampler
 
-from resnet_custom import CONFIGS, ResNet, count_layers
+from resnet_custom import ACTIVATIONS, CONFIGS, ResNet, count_layers
 
 MEAN, STD = (0.485, 0.456, 0.406), (0.229, 0.224, 0.225)
 
 ap = argparse.ArgumentParser()
 ap.add_argument("--arch", choices=list(CONFIGS), default="resnet36")
+ap.add_argument("--act", choices=list(ACTIVATIONS), default="relu", help="activation function")
 ap.add_argument("--csv", default="imagenet_splits/proto_split.csv")
 ap.add_argument("--root", default="/data/datasets/community/deeplearning/imagenet/train")
 ap.add_argument("--out", default="runs/resnet36")
@@ -105,9 +106,9 @@ val_dl = DataLoader(shard(val_ds), batch_size=2 * args.bs, **loader_kw)
 test_dl = DataLoader(shard(test_ds), batch_size=2 * args.bs, **loader_kw)
 
 # ---- model (random initialization: trained from scratch) ----
-model = ResNet(CONFIGS[args.arch], num_classes=num_classes).to(device, memory_format=torch.channels_last)
+model = ResNet(CONFIGS[args.arch], num_classes=num_classes, act=args.act).to(device, memory_format=torch.channels_last)
 n_params = sum(p.numel() for p in model.parameters())
-log(f"{args.arch}: blocks {CONFIGS[args.arch]}, {count_layers(model)} layers, {n_params / 1e6:.2f}M params, "
+log(f"{args.arch} ({args.act}): blocks {CONFIGS[args.arch]}, {count_layers(model)} layers, {n_params / 1e6:.2f}M params, "
     f"{num_classes} classes | train {len(train_ds)} / val {len(val_ds)} / test {len(test_ds)} images | "
     f"{world} GPU(s) x batch {args.bs}")
 ddp_model = DDP(model, device_ids=[local_rank] if cuda else None) if world > 1 else model
@@ -192,7 +193,7 @@ for epoch in range(start_epoch, args.epochs):
                         val_loss=val_loss, val_top1=val_top1, val_top5=val_top5, epoch_time_s=epoch_time,
                         images_per_s=s[2].item() / epoch_time))
     h = history[-1]
-    log(f"[{args.arch}] epoch {epoch + 1:3d}/{args.epochs}  train loss {h['train_loss']:.3f} top1 {h['train_top1']:.3f} | "
+    log(f"[{args.arch}/{args.act}] epoch {epoch + 1:3d}/{args.epochs}  train loss {h['train_loss']:.3f} top1 {h['train_top1']:.3f} | "
         f"val loss {val_loss:.3f} top1 {val_top1:.3f} top5 {val_top5:.3f} | {epoch_time:.0f}s, {h['images_per_s']:.0f} img/s")
     if main:
         if val_top1 > best_val:
@@ -211,7 +212,7 @@ if world > 1:
 model.load_state_dict(torch.load(out / "best.pt", map_location=device))
 test_loss, test_top1, test_top5 = evaluate(test_dl)
 best_ep = max(history, key=lambda h: h["val_top1"])
-results = dict(arch=args.arch, blocks=list(CONFIGS[args.arch]), layers=count_layers(model), params=n_params,
+results = dict(arch=args.arch, act=args.act, blocks=list(CONFIGS[args.arch]), layers=count_layers(model), params=n_params,
                gpus=world, batch_total=args.bs * world, epochs=args.epochs, best_epoch=best_ep["epoch"],
                train_top1=best_ep["train_top1"], val_top1=best_ep["val_top1"], val_top5=best_ep["val_top5"],
                test_top1=test_top1, test_top5=test_top5, train_time_min=train_time / 60,
