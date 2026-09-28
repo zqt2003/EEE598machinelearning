@@ -25,12 +25,13 @@ from torch.utils.data import DataLoader, Dataset, Subset
 from torch.utils.data.distributed import DistributedSampler
 
 from resnet_custom import ACTIVATIONS, CONFIGS, ResNet, count_layers
+from vit_custom import VIT_CONFIGS, build_vit
 
 MEAN, STD = (0.485, 0.456, 0.406), (0.229, 0.224, 0.225)
 
 ap = argparse.ArgumentParser()
 ap.add_argument("--device", choices=["auto", "cuda", "hpu", "cpu"], default="auto", help="hpu = Intel Gaudi")
-ap.add_argument("--arch", choices=list(CONFIGS), default="resnet36")
+ap.add_argument("--arch", choices=list(CONFIGS) + list(VIT_CONFIGS), default="resnet36")
 ap.add_argument("--act", choices=list(ACTIVATIONS), default="relu", help="activation function")
 ap.add_argument("--head", choices=["linear", "kan"], default="linear", help="classifier head")
 ap.add_argument("--csv", default="imagenet_splits/proto_split.csv")
@@ -38,7 +39,10 @@ ap.add_argument("--root", default="/data/datasets/community/deeplearning/imagene
 ap.add_argument("--out", default="runs/resnet36")
 ap.add_argument("--epochs", type=int, default=30)
 ap.add_argument("--bs", type=int, default=128, help="batch size PER device")
-ap.add_argument("--lr", type=float, default=0.1, help="learning rate for a total batch of 256 (scaled linearly)")
+ap.add_argument("--opt", choices=["sgd", "adamw"], default="sgd", help="sgd (ResNet recipe) or adamw (ViT/DeiT recipe)")
+ap.add_argument("--lr", type=float, default=0.1,
+                help="learning rate per 256 images (sgd) or per 512 images (adamw); scaled linearly with the global batch")
+ap.add_argument("--clip", type=float, default=0.0, help="gradient-norm clipping (0 = off; 1.0 is common for ViTs)")
 ap.add_argument("--wd", type=float, default=5e-4)
 ap.add_argument("--warmup", type=float, default=2, help="warm-up epochs")
 ap.add_argument("--label-smoothing", type=float, default=0.1)
@@ -151,9 +155,16 @@ val_dl = DataLoader(shard(val_ds), batch_size=2 * args.bs, **loader_kw)
 test_dl = DataLoader(shard(test_ds), batch_size=2 * args.bs, **loader_kw)
 
 # ---- model (random initialization: trained from scratch) ----
-model = ResNet(CONFIGS[args.arch], num_classes=num_classes, act=args.act, head=args.head).to(device, memory_format=mem_fmt)
+is_vit = args.arch in VIT_CONFIGS
+if is_vit:
+    model = build_vit(args.arch, num_classes, args.img_size).to(device, memory_format=mem_fmt)
+    blocks, n_layers = [VIT_CONFIGS[args.arch]["num_layers"]], VIT_CONFIGS[args.arch]["num_layers"]
+    args.act, args.head = "gelu", "linear"          # ViT uses GELU inside its MLPs; --act does not apply
+else:
+    model = ResNet(CONFIGS[args.arch], num_classes=num_classes, act=args.act, head=args.head).to(device, memory_format=mem_fmt)
+    blocks, n_layers = list(CONFIGS[args.arch]), count_layers(model)
 n_params = sum(p.numel() for p in model.parameters())
-log(f"{args.arch} ({args.act}, {args.head} head): blocks {CONFIGS[args.arch]}, {count_layers(model)} layers, {n_params / 1e6:.2f}M params, "
+log(f"{args.arch} ({args.act}, {args.head} head): blocks {blocks}, {n_layers} {'transformer blocks' if is_vit else 'layers'}, {n_params / 1e6:.2f}M params, "
     f"{num_classes} classes | train {len(train_ds)} / val {len(val_ds)} / test {len(test_ds)} images | "
     f"{world} x {device_name()} x batch {args.bs}")
 if world > 1:
@@ -164,12 +175,23 @@ if world > 1:
 else:
     ddp_model = model
 
-# SGD with momentum, no weight decay on BatchNorm/bias, linear LR scaling, warm-up + cosine decay
-decay = [p for n, p in model.named_parameters() if p.ndim > 1]
-no_decay = [p for n, p in model.named_parameters() if p.ndim <= 1]
-base_lr = args.lr * args.bs * world / 256
-opt = torch.optim.SGD([{"params": decay, "weight_decay": args.wd}, {"params": no_decay, "weight_decay": 0.0}],
-                      lr=base_lr, momentum=0.9, nesterov=True)
+# No weight decay on norm layers, biases, the ViT class token and position embeddings; linear LR scaling;
+# warm-up + cosine decay. SGD+momentum for ResNets, AdamW for ViTs (the standard recipe for each family).
+def no_wd(name, p):
+    return p.ndim <= 1 or name.endswith("class_token") or name.endswith("pos_embedding")
+
+
+decay = [p for n, p in model.named_parameters() if not no_wd(n, p)]
+no_decay = [p for n, p in model.named_parameters() if no_wd(n, p)]
+groups = [{"params": decay, "weight_decay": args.wd}, {"params": no_decay, "weight_decay": 0.0}]
+if args.opt == "adamw":
+    base_lr = args.lr * args.bs * world / 512
+    opt = torch.optim.AdamW(groups, lr=base_lr, betas=(0.9, 0.999))
+    opt_desc = "AdamW, betas (0.9, 0.999)"
+else:
+    base_lr = args.lr * args.bs * world / 256
+    opt = torch.optim.SGD(groups, lr=base_lr, momentum=0.9, nesterov=True)
+    opt_desc = "SGD, momentum 0.9, Nesterov"
 steps_per_epoch = len(train_dl)
 total_steps, warmup_steps = args.epochs * steps_per_epoch, int(args.warmup * steps_per_epoch)
 
@@ -254,6 +276,8 @@ for epoch in range(start_epoch, args.epochs):
         opt.zero_grad(set_to_none=True)
         loss.backward()
         mark_step()
+        if args.clip > 0:
+            torch.nn.utils.clip_grad_norm_(model.parameters(), args.clip)
         opt.step()
         mark_step()
         s += torch.stack([loss.detach().float() * len(y), (logits.argmax(1) == y).sum().float(),
@@ -295,13 +319,13 @@ test_time = time.time() - t_test
 latency = measure_latency(model) if (main and args.latency_iters > 0) else {}
 best_ep = max(history, key=lambda h: h["val_top1"])
 results = dict(
-    arch=args.arch, act=args.act, head=args.head, blocks=list(CONFIGS[args.arch]), layers=count_layers(model), params=n_params,
+    arch=args.arch, act=args.act, head=args.head, blocks=blocks, layers=n_layers, params=n_params,
     device=device_name(), devices=world, gpus=world, batch_total=args.bs * world, epochs=args.epochs, best_epoch=best_ep["epoch"],
     train_top1=best_ep["train_top1"], val_top1=best_ep["val_top1"], val_top5=best_ep["val_top5"],
     test_top1=test_top1, test_top5=test_top5, test_images=len(test_ds), test_eval_time_s=test_time,
     train_time_min=train_time / 60, avg_images_per_s=sum(h["images_per_s"] for h in history) / len(history),
     wall_time_this_run_min=(time.time() - wall_start) / 60,
-    hyperparameters=dict(optimizer="SGD, momentum 0.9, Nesterov", base_lr=base_lr, lr_per_256=args.lr,
+    hyperparameters=dict(optimizer=opt_desc, base_lr=base_lr, lr_reference=args.lr, grad_clip=args.clip,
                          weight_decay=args.wd, warmup_epochs=args.warmup, schedule="linear warm-up + cosine decay",
                          label_smoothing=args.label_smoothing, batch_per_device=args.bs, global_batch=args.bs * world,
                          img_size=args.img_size, precision="bfloat16 autocast", augmentation="RandomResizedCrop + HorizontalFlip",
