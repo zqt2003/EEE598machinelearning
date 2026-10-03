@@ -1,0 +1,10 @@
+\begin{abstract}
+This report covers the three problems of Assignment~2.
+\textbf{Problem~1} studies perceptual losses built on a pre-trained VGG-16.
+A 1-pixel translation of a $4032\times3024$ photograph changes the pixels by 9\% but the VGG features by 32--59\%, and diagnostic tests trace this to aliasing in the network's strided downsampling.
+We then measure how the features respond to additive Gaussian noise and design a turbulence-robust feature: an anti-aliased VGG trunk with a small head trained by dense contrastive learning on 800 clean crops and their DAATSim-simulated turbulent versions.
+\textbf{Problem~2} fine-tunes a ViT-B/32 on the 12-class infrared PV-module dataset after balancing it to 2{,}500 images per class.
+Fine-tuning the whole model gives the best test accuracy (73.3\%); fine-tuning only the last four blocks reaches 68.7\% in about half the training time.
+\textbf{Problem~3} trains a custom ResNet-36 with a new activation function, ArcGate, from scratch on ImageNet.
+On the full 650-class Sol copy it reaches 60.4\% top-1 and 82.9\% top-5 test accuracy after 10 epochs (54~min of training).
+\end{abstract}

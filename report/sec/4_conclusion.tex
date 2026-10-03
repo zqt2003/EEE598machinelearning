@@ -1,0 +1,27 @@
+\section{Conclusion}
+\label{sec:conclusion}
+
+\textbf{Problem~1.}
+VGG-16 features are not automatically perceptual.
+They amplify an invisible 1-pixel shift 3.5--6.6 times relative to pixels and over-react to invisible noise, and our checks trace the shift sensitivity to aliasing in strided downsampling.
+Deeper layers behave best, so we recommend \relu{3_3}.
+For turbulence, an anti-aliased VGG trunk with a contrastively trained head is about four times more invariant than any VGG layer and fixes the failure of VGG features at mild turbulence.
+It does not beat simple pixel-based distances, which shows how hard the problem is at strong turbulence.
+
+\textbf{Problem~2.}
+On the balanced PV dataset, fully fine-tuning ViT-B/32 gives the best test accuracy (73.25\%) in 4.2 minutes.
+Fine-tuning the last four blocks is the most efficient strategy (68.70\% in 2.3 minutes).
+Training only the head underfits because of the large domain gap between ImageNet photos and tiny infrared images.
+
+\textbf{Problem~3.}
+Our ResNet-36 adds one block in the $14\times14$ stage for a 6\% compute increase, and ArcGate is a smooth, monotonic, Cauchy-gated activation.
+Trained from scratch on the full 650-class ImageNet split for 10 epochs, ResNet-36 with ArcGate reaches 60.4\% top-1 and 82.9\% top-5 test accuracy, with 6.2\,ms single-image latency.
+
+\section*{Acknowledgements}
+\begin{itemize}[nosep,leftmargin=*]
+  \item \textbf{Data and code.} ImageNet~\cite{deng2009imagenet} (Sol copy provided by the course); the InfraredSolarModules PV dataset~\cite{millendorf2020pv}; DIV2K~\cite{agustsson2017div2k}; the DAATSim simulator~\cite{saha2025daatsim} (\url{https://github.com/Riponcs/DAATSim}); PyTorch and torchvision~\cite{paszke2019pytorch}, including the pre-trained VGG-16, ViT-B/32 and ViT implementations; the CVPR 2026 author kit (\url{https://github.com/cvpr-org/author-kit}) for this report's format.
+  \item \textbf{Methods.} The anti-aliased pooling follows BlurPool~\cite{zhang2019blurpool}, the contrastive loss InfoNCE and DenseCL~\cite{oord2018cpc,wang2021densecl}, and the ViT training recipe DeiT~\cite{touvron2021deit}.
+  \item \textbf{Compute.} Experiments ran on the Sol supercomputer at Arizona State University~\cite{jennewein2023sol}.
+  \item \textbf{AI assistance.} Parts of the code and the drafting of this report were done with the help of Claude (Anthropic), an AI assistant. All experiments were run, and all results checked, by the author.
+  \item \textbf{People.} \TODO{name any classmates who helped, or delete this item.}
+\end{itemize}

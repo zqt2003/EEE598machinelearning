@@ -1,0 +1,47 @@
+% EEE 598 Assignment 2 report, written in the CVPR 2026 template (https://github.com/cvpr-org/author-kit)
+
+\documentclass[10pt,twocolumn,letterpaper]{article}
+
+%%%%%%%%% PAPER TYPE
+% [pagenumbers] = final (non-anonymous) version with page numbers, as for an arXiv copy.
+% \usepackage{cvpr}              % To produce the CAMERA-READY version
+% \usepackage[review]{cvpr}      % To produce the REVIEW version
+\usepackage[pagenumbers]{cvpr} % To force page numbers, e.g. for an arXiv version
+
+% Import additional packages in the preamble file, before hyperref
+\input{preamble}
+
+\definecolor{cvprblue}{rgb}{0.21,0.49,0.74}
+\usepackage[pagebackref,breaklinks,colorlinks,allcolors=cvprblue]{hyperref}
+
+%%%%%%%%% PAPER ID
+\def\paperID{*****}
+\def\confName{CVPR}
+\def\confYear{2026}
+
+%%%%%%%%% TITLE
+\title{EEE 598 Deep Learning, Assignment 2:\\Perceptual Losses, ViT Fine-Tuning, and ImageNet Training from Scratch}
+
+%%%%%%%%% AUTHORS
+\author{\TODO{Your full name}\\
+Arizona State University\\
+{\tt\small qitongzh@asu.edu}
+}
+
+\begin{document}
+% cleveref names for code listings (\cref{lst:...} prints "Code 1", matching the captions)
+\crefname{listing}{Code}{Code}\Crefname{listing}{Code}{Code}
+\crefname{lstlisting}{Code}{Code}\Crefname{lstlisting}{Code}{Code}
+\maketitle
+\input{sec/0_abstract}
+\input{sec/1_problem1}
+\input{sec/2_problem2}
+\input{sec/3_problem3}
+\input{sec/4_conclusion}
+{
+    \small
+    \bibliographystyle{ieeenat_fullname}
+    \bibliography{main}
+}
+
+\end{document}

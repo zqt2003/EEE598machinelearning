@@ -1,0 +1,46 @@
+%% Packages and macros for this report (loaded before hyperref by main.tex).
+
+\usepackage[T1]{fontenc}
+\usepackage{multirow}
+\usepackage{makecell}
+\usepackage{listings}
+
+%% Inline annotations: red text marks things that still have to be filled in.
+\newcommand{\red}[1]{{\color{red}#1}}
+\newcommand{\todo}[1]{{\color{red}#1}}
+\newcommand{\TODO}[1]{\textbf{\color{red}[TODO: #1]}}
+%% Before submitting, search for "TODO" and make sure none is left in the PDF.
+
+%% A figure that is not in figs/ yet: shows a red box with the expected file name.
+%% Upload the file to figs/ under that name and the real figure appears.
+\newcommand{\figorbox}[3]{%  #1 width, #2 file in figs/, #3 what the figure should show
+  \IfFileExists{figs/#2}{\includegraphics[width=#1]{figs/#2}}{%
+    \fbox{\parbox[c][5em][c]{\dimexpr#1-2\fboxsep-2\fboxrule}{\centering\small
+      \textbf{\color{red}Missing figure: figs/\detokenize{#2}}\\[2pt] #3}}}}
+
+%% Code listings
+\lstdefinestyle{report}{
+  language=Python,
+  basicstyle=\ttfamily\scriptsize,
+  keywordstyle=\color{cvprblue}\bfseries,
+  commentstyle=\color{gray}\itshape,
+  stringstyle=\color{BrickRed},
+  columns=fullflexible,
+  keepspaces=true,
+  breaklines=true,
+  frame=single,
+  rulecolor=\color{lightgray},
+  xleftmargin=2pt,
+  xrightmargin=2pt,
+  aboveskip=4pt,
+  belowskip=2pt,
+  captionpos=b,
+  showstringspaces=false,
+}
+\lstset{style=report}
+\renewcommand{\lstlistingname}{Code}
+
+\definecolor{cvprblue}{rgb}{0.21,0.49,0.74}
+
+%% Short names used in the text
+\newcommand{\relu}[1]{\texttt{\detokenize{relu#1}}}
