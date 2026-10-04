@@ -289,16 +289,16 @@ $\text{AUC}_{\text{edit}}=P\big(d(x,T(x))<d(x,\text{edit}(x))\big)$: 1.0 means t
  & \multicolumn{5}{c|}{AUC$_\text{edit}$ ($\uparrow$) at $D/r_0=$} & \multicolumn{2}{c}{ratio ($\downarrow$)} \\
 Feature & 2 & 4 & 6.7 & 10 & 20$^\dagger$ & 2 & 20$^\dagger$ \\
 \midrule
-pixels (MSE) & 0.73 & 0.56 & 0.39 & 0.28 & 0.13 & 0.04 & 0.11 \\
-blurred pixels & \textbf{1.00} & \textbf{0.98} & \textbf{0.93} & \textbf{0.82} & \textbf{0.49} & \textbf{0.007} & \textbf{0.05} \\
-VGG taps / LPIPS / AA-VGG & 0.00 & 0.00 & 0.00 & 0.00 & 0.00 & 0.27--0.34 & 0.55--0.82 \\
+pixels (MSE) & 0.728 & 0.558 & 0.388 & 0.276 & 0.130 & 0.036 & 0.113 \\
+blurred pixels & \textbf{0.998} & \textbf{0.984} & \textbf{0.934} & \textbf{0.817} & \textbf{0.486} & \textbf{0.007} & \textbf{0.052} \\
+VGG taps / LPIPS / AA-VGG & $\le$0.001 & 0.000 & 0.000 & 0.000 & 0.000 & 0.27--0.34 & 0.55--0.82 \\
 \midrule
-Proposed & 0.76 & 0.22 & 0.02 & 0.00 & 0.00 & 0.07 & 0.37 \\
-\quad w/o anti-aliasing & 0.70 & 0.19 & 0.02 & 0.00 & 0.00 & 0.07 & 0.38 \\
-\quad invariance-only & 0.04 & 0.01 & 0.00 & 0.00 & 0.00 & 0.22 & 0.63 \\
+Proposed & 0.763 & 0.218 & 0.020 & 0.001 & 0.000 & 0.069 & 0.372 \\
+\quad w/o anti-aliasing & 0.699 & 0.190 & 0.019 & 0.001 & 0.000 & 0.073 & 0.380 \\
+\quad invariance-only & 0.042 & 0.014 & 0.002 & 0.000 & 0.000 & 0.219 & 0.634 \\
 \bottomrule
 \end{tabular}}
-\caption{Turbulence results, read from \cref{fig:turb} (two decimals). $^\dagger$Stronger than any training turbulence. ``VGG taps / LPIPS / AA-VGG'' covers the four single VGG taps, the LPIPS-style sum and the untrained anti-aliased VGG, which all behave alike.}
+\caption{Turbulence results on the 160 test images (from \texttt{metrics.csv}). Every feature judges the turbulent copy closer than a \emph{different} image ($\text{AUC}\ge0.998$, not shown). $^\dagger$Stronger than any training turbulence. ``VGG taps / LPIPS / AA-VGG'' covers the four single VGG taps, the LPIPS-style sum and the untrained anti-aliased VGG, which all behave alike.}
 \label{tab:turb}
 \end{table}
 
@@ -501,13 +501,13 @@ RGB std (ImageNet reference) & 0.281, 0.278, 0.295 (0.229, 0.224, 0.225) \\
 \label{tab:proto}
 \end{table}
 
-\begin{figure}[t]
+\begin{figure*}[t]
 \centering
-\figorbox{figs/fig_proto_stats.png}{\linewidth}{(\texttt{imagenet\_splits/fig\_proto\_stats.png}: images per class with the chosen classes, split sizes, image sizes, aspect ratios)}\\[3pt]
-\figorbox{figs/fig_proto_samples.png}{\linewidth}{(\texttt{imagenet\_splits/fig\_proto\_samples.png}: one image from each of the first 40 prototype classes)}
-\caption{Prototype dataset. Top: availability of images per class and the 100 selected classes, split sizes, original image sizes and aspect ratios. Bottom: one training image per class for the first 40 classes.}
+\includegraphics[width=0.49\linewidth]{figs/fig_proto_stats.png}\hfill
+\includegraphics[width=0.49\linewidth]{figs/fig_proto_samples.png}
+\caption{Prototype dataset. Left: images per class in Sol's ImageNet folder with the 100 selected classes (blue), split sizes, original image sizes and aspect ratios (sample of 3{,}000). Right: one training image from each of the first 40 prototype classes.}
 \label{fig:proto}
-\end{figure}
+\end{figure*}
 
 \subsection{Custom ResNet-36}
 \label{sec:p3-2}
