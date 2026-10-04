@@ -1,0 +1,38 @@
+%% Packages and macros for this report (loaded before hyperref, as the CVPR kit requires)
+\usepackage{multirow}
+\usepackage{makecell}
+\usepackage{tabularx}
+\usepackage{listings}
+\usepackage{tikz}
+\usetikzlibrary{positioning,arrows.meta,calc,fit,backgrounds}
+\usepackage{xspace}
+
+%% red markers for values that still have to be copied from Sol
+\newcommand{\TODO}[1]{\textbf{\color{red}[TODO: #1]}}
+\newcommand{\tbd}{{\color{red}\textbf{?}}}
+
+%% include a figure if the file exists, otherwise show a red box saying which file to upload
+\newcommand{\figorbox}[3]{%
+  \IfFileExists{#1}{\includegraphics[width=#2]{#1}}{%
+    \fbox{\parbox[c][2.6cm][c]{0.94\linewidth}{\centering\small\color{red}%
+      \textbf{Upload \texttt{\detokenize{#1}}}\\[2pt]#3}}}}
+
+%% a highlighted one-line answer at the end of each sub-problem
+\newcommand{\answer}[1]{\par\smallskip\noindent\fcolorbox{cvprblue!60}{cvprblue!6}{\parbox{\dimexpr\linewidth-2\fboxsep-2\fboxrule}{\small\textbf{Answer.} #1}}\par\smallskip}
+
+\definecolor{codebg}{rgb}{0.97,0.97,0.97}
+\definecolor{codekw}{rgb}{0.10,0.30,0.65}
+\definecolor{codecm}{rgb}{0.40,0.40,0.40}
+\definecolor{codestr}{rgb}{0.60,0.20,0.10}
+\lstset{
+  language=Python, basicstyle=\ttfamily\scriptsize, keywordstyle=\color{codekw}\bfseries,
+  commentstyle=\color{codecm}\itshape, stringstyle=\color{codestr}, backgroundcolor=\color{codebg},
+  frame=single, rulecolor=\color{black!25}, framesep=2pt, xleftmargin=3pt, xrightmargin=3pt,
+  columns=fullflexible, keepspaces=true, breaklines=true, showstringspaces=false,
+  aboveskip=4pt, belowskip=4pt, captionpos=b, upquote=true,
+  literate={×}{{$\times$}}1 {σ}{{$\sigma$}}1 {π}{{$\pi$}}1
+}
+\lstdefinestyle{bash}{language=bash, keywordstyle=\color{codekw}}
+\renewcommand{\lstlistingname}{Code}
+
+\newcommand{\relu}[1]{\texttt{relu#1}}
