@@ -1,0 +1,10 @@
+# Extra packages for HW3 on top of PyTorch + torchvision (install into your qtz env:  pip install -r requirements.txt)
+pretty_midi          # Problem 1: read/write MIDI
+scipy
+pandas
+matplotlib
+transformers>=4.45   # Problem 3: Hugging Face segmentation / depth pipelines
+diffusers>=0.30      # Problem 4: U-Net and noise schedulers for the diffusion model
+torchmetrics         # Problem 4: FID / KID
+torch-fidelity       # Problem 4: Inception weights for FID / KID
+nbformat             # Problem 3: builds the Colab notebook
