@@ -70,14 +70,15 @@ increasing the size until it works.
 a montage figure for the report, saved next to the dataset folder (`data/animal256_montage.png`), not
 inside it, so it never ends up in training. Pick a source:
 
-- **ImageNet on Sol (no download, used by `jobs/animal_data.sbatch`).** `--preset cat` uses the 5 domestic
-  cat classes (~6,500 images, capped at 5,000). Other presets: `fox`, `panda`, `golden_retriever`, or
-  `--wnids n0xxxxxxx ...`. Sol's copy has 650 of the 1,000 classes; the script tells you if a class is missing,
-  and stops if it finds no images at all. To see which classes of an animal Sol has (uses the Canvas mapping
-  file from HW2):
-  `python prepare_animal.py --imagenet /data/datasets/community/deeplearning/imagenet/train --mapping ~/EE598_Assignment2/LOC_synset_mapping.txt --find dog`
-  then pass the listed IDs with `--wnids`.
-  Caveat: these are cluttered photos (cats in boxes, on laps). GANs find that much harder than faces.
+- **ImageNet on Sol (no download, used by `jobs/animal_data.sbatch`).** Sol's copy has only 650 of the 1,000
+  classes, and it turned out to have **no cat or dog-breed classes** (the `cat`/`dog` presets find nothing there).
+  First list the animals it does have (classes 0-397 of ImageNet are animals; the class names are downloaded
+  automatically):
+  `python prepare_animal.py --imagenet /data/datasets/community/deeplearning/imagenet/train --list-animals`
+  or search one word: `... --find monkey`. Each class has ~1,300 images, so one class is enough for the
+  1,000-5,000 requirement; a few related classes (e.g. both elephants) give more. Then
+  `python prepare_animal.py --imagenet ... --wnids <IDs> --max 5000 --out data/animal256`.
+  Caveat: these are cluttered photos. GANs find that much harder than aligned faces.
 - **AFHQ (Animal Faces HQ), recommended for nicer results.** About 5,150 cat, 4,700 dog and 4,700 wildlife
   *face* photos (training split), already aligned and 512x512. Get it from Kaggle (`andrewmvd/animal-faces`) or search the
   Hugging Face Hub for "AFHQ". Then

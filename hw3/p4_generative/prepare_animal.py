@@ -1,13 +1,14 @@
 """Build the animal dataset: 1,000-5,000 images, center-cropped to a square and resized to 256x256.
 
-Option A, no download (ImageNet on Sol):
-    python prepare_animal.py --imagenet /data/datasets/community/deeplearning/imagenet/train --preset cat \
-        --max 5000 --out data/animal256
+Which animals does Sol's ImageNet copy have? (it has 650 of the 1,000 classes; classes 0-397 are animals)
+    python prepare_animal.py --imagenet /data/datasets/community/deeplearning/imagenet/train --list-animals
+Option A, no download (ImageNet on Sol), using classes that list shows:
+    python prepare_animal.py --imagenet /data/datasets/community/deeplearning/imagenet/train \
+        --wnids n02510455 --max 5000 --out data/animal256
 Option B, any folder(s) of images you downloaded (Kaggle AFHQ, icrawler, ...):
     python prepare_animal.py --src downloads/cat downloads/cat2 --max 5000 --out data/animal256
-Which ImageNet classes of an animal does Sol have? (needs the Canvas synset -> name file)
-    python prepare_animal.py --imagenet /data/datasets/community/deeplearning/imagenet/train \
-        --mapping ~/EE598_Assignment2/LOC_synset_mapping.txt --find cat
+Search the class names for a word:
+    python prepare_animal.py --imagenet /data/datasets/community/deeplearning/imagenet/train --find monkey
 
 Removes images smaller than --min-side and exact/near duplicates (8x8 average hash), and writes
 data/animal256/img/*.jpg. The montage figure for the report goes NEXT TO that folder
@@ -15,10 +16,12 @@ data/animal256/img/*.jpg. The montage figure for the report goes NEXT TO that fo
 """
 import argparse
 import glob
+import json
 import os
 import random
 import re
 import sys
+import urllib.request
 
 import matplotlib
 matplotlib.use("Agg")
@@ -34,6 +37,21 @@ PRESETS = {
     "golden_retriever": ["n02099601"],
     "dog": ("range", "n02085620", "n02113978"),   # ALL dog breeds ImageNet has (118, Chihuahua ... Mexican hairless)
 }
+# the standard ImageNet class list (index -> [synset ID, name]); same file as problem3/make_mapping.py
+CLASS_INDEX_URL = "https://storage.googleapis.com/download.tensorflow.org/data/imagenet_class_index.json"
+
+
+def imagenet_classes(mapping=None, cache="imagenet_class_index.json"):
+    """[(index, synset ID, name)] for all 1,000 classes (index -1 when read from a mapping file)."""
+    if mapping:
+        rows = [line.strip().split(maxsplit=1) for line in open(os.path.expanduser(mapping))]
+        return [(-1, r[0], r[1]) for r in rows if len(r) == 2]
+    if not os.path.exists(cache):
+        urllib.request.urlretrieve(CLASS_INDEX_URL, cache)
+    idx = json.load(open(cache))
+    return [(int(i), w, n.replace("_", " ")) for i, (w, n) in sorted(idx.items(), key=lambda kv: int(kv[0]))]
+
+
 EXT = (".jpg", ".jpeg", ".png", ".webp", ".bmp", ".JPEG")
 
 
@@ -54,21 +72,31 @@ def main():
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--out", default="data/animal256")
     ap.add_argument("--find", default=None, help="list the ImageNet classes whose name contains this word, then exit")
-    ap.add_argument("--mapping", default=None, help="synset -> name file (LOC_synset_mapping.txt from Canvas)")
+    ap.add_argument("--list-animals", action="store_true", help="list the animal classes (0-397) this copy has, then exit")
+    ap.add_argument("--mapping", default=None, help="optional synset -> name file; default: the standard class list")
     args = ap.parse_args()
 
-    if args.find:                                        # which classes of this animal exist on this copy?
-        if not (args.imagenet and args.mapping):
-            sys.exit("--find needs --imagenet <train folder> and --mapping <LOC_synset_mapping.txt>")
-        hits = []
-        for line in open(os.path.expanduser(args.mapping)):
-            parts = line.strip().split(maxsplit=1)
-            if len(parts) == 2 and re.search(rf"\b{re.escape(args.find)}\b", parts[1], re.IGNORECASE):
-                n = len(glob.glob(os.path.join(args.imagenet, parts[0], "*")))
-                hits.append((n, parts[0], parts[1]))
-        for n, w, name in sorted(hits, reverse=True):
-            print(f"  {w}  {n:5d} images  {name}" + ("" if n else "   <-- not on this copy"))
-        print(f"use the ones with images:  --wnids " + " ".join(w for n, w, _ in sorted(hits, reverse=True) if n))
+    if args.find or args.list_animals:                   # what does this ImageNet copy contain?
+        if not args.imagenet:
+            sys.exit("--find / --list-animals need --imagenet <train folder>")
+        present = set(os.listdir(args.imagenet))
+        classes = imagenet_classes(args.mapping)
+        idx_present = [i for i, w, _ in classes if w in present and i >= 0]
+        if idx_present:
+            print(f"this copy has {len(present)} class folders; standard class indices {min(idx_present)}..{max(idx_present)}")
+        if args.list_animals:
+            hits = [(i, w, n) for i, w, n in classes if 0 <= i <= 397 and w in present]
+            print(f"{len(hits)} of the 398 animal classes are on this copy:")
+        else:
+            hits = [(i, w, n) for i, w, n in classes if re.search(rf"\b{re.escape(args.find)}\b", n, re.IGNORECASE)]
+        ok = []
+        for i, w, n in hits:
+            k = len(os.listdir(os.path.join(args.imagenet, w))) if w in present else 0
+            print(f"  {i:4d}  {w}  {k:5d} images  {n}" + ("" if k else "   <-- not on this copy"))
+            if k:
+                ok.append(w)
+        if ok and not args.list_animals:
+            print("use the ones with images:  --wnids " + " ".join(ok))
         return
 
     files = []

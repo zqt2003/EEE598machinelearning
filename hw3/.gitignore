@@ -16,3 +16,4 @@ p2_siren/activation.png
 p5_vlm_gaudi/run_lora_vlm.py
 p5_vlm_gaudi/run_lora_vlm_patched.py
 p5_vlm_gaudi/gaudi_spawn.py
+imagenet_class_index.json
