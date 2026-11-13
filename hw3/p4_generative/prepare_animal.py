@@ -32,6 +32,7 @@ PRESETS = {
     "fox": ["n02119022", "n02119789", "n02120079", "n02120505"],               # red, kit, Arctic, grey fox
     "panda": ["n02510455"],                                                     # giant panda (~1,300 images)
     "golden_retriever": ["n02099601"],
+    "dog": ("range", "n02085620", "n02113978"),   # ALL dog breeds ImageNet has (118, Chihuahua ... Mexican hairless)
 }
 EXT = (".jpg", ".jpeg", ".png", ".webp", ".bmp", ".JPEG")
 
@@ -74,7 +75,12 @@ def main():
     for d in args.src:
         files += [f for f in glob.glob(os.path.join(d, "**", "*"), recursive=True) if f.endswith(EXT)]
     if args.imagenet:
-        wnids = (PRESETS[args.preset] if args.preset else []) + args.wnids
+        preset = PRESETS[args.preset] if args.preset else []
+        if isinstance(preset, tuple):                  # a range of synset IDs: take every one this copy has
+            _, lo, hi = preset
+            preset = sorted(d for d in os.listdir(args.imagenet) if lo <= d <= hi)
+            print(f"preset {args.preset}: {len(preset)} classes found on this copy")
+        wnids = preset + args.wnids
         for w in wnids:
             got = sorted(glob.glob(os.path.join(args.imagenet, w, "*")))
             print(f"  {w}: {len(got)} images" + ("   <-- not on this copy of ImageNet" if not got else ""))
