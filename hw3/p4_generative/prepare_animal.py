@@ -5,14 +5,20 @@ Option A, no download (ImageNet on Sol):
         --max 5000 --out data/animal256
 Option B, any folder(s) of images you downloaded (Kaggle AFHQ, icrawler, ...):
     python prepare_animal.py --src downloads/cat downloads/cat2 --max 5000 --out data/animal256
+Which ImageNet classes of an animal does Sol have? (needs the Canvas synset -> name file)
+    python prepare_animal.py --imagenet /data/datasets/community/deeplearning/imagenet/train \
+        --mapping ~/EE598_Assignment2/LOC_synset_mapping.txt --find cat
 
 Removes images smaller than --min-side and exact/near duplicates (8x8 average hash), and writes
-data/animal256/img/*.jpg plus a montage figure (dataset_montage.png) for the report.
+data/animal256/img/*.jpg. The montage figure for the report goes NEXT TO that folder
+(data/animal256_montage.png), so the training scripts never mistake it for a training image.
 """
 import argparse
 import glob
 import os
 import random
+import re
+import sys
 
 import matplotlib
 matplotlib.use("Agg")
@@ -46,7 +52,23 @@ def main():
     ap.add_argument("--min-side", type=int, default=160)
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--out", default="data/animal256")
+    ap.add_argument("--find", default=None, help="list the ImageNet classes whose name contains this word, then exit")
+    ap.add_argument("--mapping", default=None, help="synset -> name file (LOC_synset_mapping.txt from Canvas)")
     args = ap.parse_args()
+
+    if args.find:                                        # which classes of this animal exist on this copy?
+        if not (args.imagenet and args.mapping):
+            sys.exit("--find needs --imagenet <train folder> and --mapping <LOC_synset_mapping.txt>")
+        hits = []
+        for line in open(os.path.expanduser(args.mapping)):
+            parts = line.strip().split(maxsplit=1)
+            if len(parts) == 2 and re.search(rf"\b{re.escape(args.find)}\b", parts[1], re.IGNORECASE):
+                n = len(glob.glob(os.path.join(args.imagenet, parts[0], "*")))
+                hits.append((n, parts[0], parts[1]))
+        for n, w, name in sorted(hits, reverse=True):
+            print(f"  {w}  {n:5d} images  {name}" + ("" if n else "   <-- not on this copy"))
+        print(f"use the ones with images:  --wnids " + " ".join(w for n, w, _ in sorted(hits, reverse=True) if n))
+        return
 
     files = []
     for d in args.src:
@@ -84,6 +106,9 @@ def main():
         img.save(path, quality=95)
         kept.append(path)
     print(f"kept {len(kept)} images ({skipped_small} too small, {skipped_dup} duplicates) -> {args.out}/img")
+    if not kept:
+        sys.exit("ERROR: no images were kept. If you used --preset/--wnids, those classes are not in this ImageNet "
+                 "copy: run with --find <animal> --mapping <LOC_synset_mapping.txt> to see which ones are.")
     if len(kept) < 1000:
         print("WARNING: fewer than 1,000 images; add more sources (the assignment asks for 1,000-5,000).")
 
@@ -94,7 +119,9 @@ def main():
     for ax in axes.flat[len(show):]:
         ax.axis("off")
     fig.suptitle(f"Animal dataset: {len(kept)} images, {args.size}x{args.size} (48 random examples)", fontsize=16)
-    plt.tight_layout(); plt.savefig(os.path.join(args.out, "dataset_montage.png"), dpi=90)
+    montage = args.out.rstrip("/") + "_montage.png"       # outside the dataset folder (see docstring)
+    plt.tight_layout(); plt.savefig(montage, dpi=90)
+    print("montage:", montage)
 
 
 if __name__ == "__main__":

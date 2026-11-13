@@ -89,6 +89,8 @@ for p in range(start_phase, len(phases)):
     total = int(1000 * (args.fade_kimg if kind == "fade" else args.stable_kimg))
     loader = DataLoader(data, batch_size=bs, shuffle=True, drop_last=True, num_workers=args.workers,
                         pin_memory=device.type == "cuda")
+    if len(loader) == 0:
+        raise SystemExit(f"{len(data)} images under {args.data}, fewer than one batch of {bs}. Check the folder: did the dataset script finish and find images? (Delete any stray files in it, e.g. a montage PNG.) Or lower --bs.")
     seen = start_img if p == start_phase else 0
     print(f"--- phase {p}: {res}x{res} {kind}, {total:,} images, batch {bs}", flush=True)
     while seen < total:

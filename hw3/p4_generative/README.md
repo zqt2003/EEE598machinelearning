@@ -67,11 +67,16 @@ increasing the size until it works.
 ## 4.4 Animal dataset (1,000-5,000 images, 256x256)
 
 `prepare_animal.py` center-crops, resizes to 256x256, drops tiny images and near-duplicates, and saves
-a `dataset_montage.png` for the report. Pick a source:
+a montage figure for the report, saved next to the dataset folder (`data/animal256_montage.png`), not
+inside it, so it never ends up in training. Pick a source:
 
 - **ImageNet on Sol (no download, used by `jobs/animal_data.sbatch`).** `--preset cat` uses the 5 domestic
   cat classes (~6,500 images, capped at 5,000). Other presets: `fox`, `panda`, `golden_retriever`, or
-  `--wnids n0xxxxxxx ...`. Sol's copy has 650 of the 1,000 classes; the script tells you if a class is missing.
+  `--wnids n0xxxxxxx ...`. Sol's copy has 650 of the 1,000 classes; the script tells you if a class is missing,
+  and stops if it finds no images at all. To see which classes of an animal Sol has (uses the Canvas mapping
+  file from HW2):
+  `python prepare_animal.py --imagenet /data/datasets/community/deeplearning/imagenet/train --mapping ~/EE598_Assignment2/LOC_synset_mapping.txt --find dog`
+  then pass the listed IDs with `--wnids`.
   Caveat: these are cluttered photos (cats in boxes, on laps). GANs find that much harder than faces.
 - **AFHQ (Animal Faces HQ), recommended for nicer results.** About 5,150 cat, 4,700 dog and 4,700 wildlife
   *face* photos (training split), already aligned and 512x512. Get it from Kaggle (`andrewmvd/animal-faces`) or search the

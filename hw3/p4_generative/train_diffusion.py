@@ -168,6 +168,8 @@ if args.sample_only:
 if not args.figures_only:
     loader = DataLoader(data, batch_size=args.bs, shuffle=True, drop_last=True, num_workers=args.workers,
                         pin_memory=device.type == "cuda", persistent_workers=args.workers > 0)
+    if len(loader) == 0:
+        raise SystemExit(f"{len(data)} images under {args.data}, fewer than one batch of {args.bs}. Check the folder: did the dataset script finish and find images? (Delete any stray files in it, e.g. a montage PNG.) Or lower --bs.")
     t0 = time.time()
     while step < args.steps:
         for x0 in loader:

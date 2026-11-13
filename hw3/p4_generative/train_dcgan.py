@@ -53,6 +53,8 @@ data = ImageDir(args.data, args.size, flip=args.flip)
 loader = DataLoader(data, batch_size=args.bs, shuffle=True, drop_last=True, num_workers=args.workers,
                     pin_memory=device.type == "cuda", persistent_workers=args.workers > 0)
 print(f"{len(data)} images, {len(loader)} iterations/epoch, device {device}")
+if len(loader) == 0:
+    raise SystemExit(f"{len(data)} images under {args.data}, fewer than one batch of {args.bs}. Check the folder: did the dataset script finish and find images? (Delete any stray files in it, e.g. a montage PNG.) Or lower --bs.")
 
 G = Generator(args.nz, args.ngf, args.size).to(device)
 D = Discriminator(args.ndf, args.size, spectral=args.spectral_norm).to(device)
