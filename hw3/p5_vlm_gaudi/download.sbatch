@@ -17,14 +17,7 @@ source activate gaudi-pytorch-diffusion-1.22.0.740
 source $HOME/venvs/hw3-vlm/bin/activate
 export HF_HOME=/scratch/$USER/hf_cache          # big files go to scratch, not your 100 GB home
 mkdir -p $HF_HOME
+cd "$SLURM_SUBMIT_DIR"                    # submit from hw3/p5_vlm_gaudi
 
-python - <<'EOF'
-from huggingface_hub import snapshot_download
-from datasets import load_dataset
-for repo in ["llava-hf/llava-v1.6-mistral-7b-hf", "Habana/gpt2"]:
-    print("downloading", repo, flush=True)
-    print(snapshot_download(repo))
-ds = load_dataset("HuggingFaceM4/ChartQA")
-print(ds)
-EOF
+python check_downloads.py      # downloads what is missing, verifies every file's size, builds ChartQA
 du -sh $HF_HOME
