@@ -74,12 +74,17 @@ must match exactly. `compare_eval.py` writes:
 
 ## The patch (`patch_example.py`)
 
-Three small fixes to the example script, each explained in the file:
+Four small fixes to the example script, each explained in the file:
 1. **Multi-card epoch length.** The script computes `max_steps = samples / (batch x grad_accum) x epochs`
    and ignores the number of cards. With 4 cards, each step uses 4 samples, so "1 epoch" would silently
    be 4 epochs. The patch divides by the world size.
 2. **Resume after a Slurm time limit**, from the newest `checkpoint-*`.
 3. **`trainer.save_state()`**, so the full loss/memory log ends up in `trainer_state.json`.
+4. **Non-reentrant gradient checkpointing** (`use_reentrant=False`). With the default ("reentrant")
+   checkpointing, multi-card training crashes on the first step with `Expected to mark a variable ready only
+   once`, because the script turns on DDP's `find_unused_parameters` for LLaVA. The old method also gives no
+   gradients to LoRA layers whose inputs don't require grad (the vision tower). The newer method has neither
+   problem and saves the same memory.
 
 ## Things to know (good material for the report)
 
